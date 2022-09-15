@@ -70,7 +70,7 @@ class Monobank(BaseMonobank):
         from_datetime = await timestamp(from_datetime)
         to_datetime = await timestamp(to_datetime)
 
-        path_parameters = f'/{account_id}/{from_datetime}{to_datetime}'
+        path_parameters = f'/{account_id}/{from_datetime}/{to_datetime}'
 
         statements = await self.request('GET', "personal/statement" + path_parameters)
 
