@@ -101,7 +101,7 @@ def check_result(method_name: str, content_type: str, status_code: int, body: st
 
 
 async def make_request(session, server, request_type, method, **kwargs):
-    log.debug('Make request: "%s" with data: "%r"', method, kwargs['data'])
+    log.debug('Make request: "%s" with data: "%r"', method, kwargs['json'])
 
     url = server.api_url(method=method)
 
