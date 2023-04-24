@@ -23,8 +23,15 @@ class Statement(BaseModel):
 
     @validator('amount', 'operation_amount', 'cashback_amount', 'commission_rate', 'cashback_amount', 'balance',
                pre=True, allow_reuse=True)
-    def convert_from_integer_to_currency_sum(cls, value: int):
+    def _convert_from_integer_to_currency_sum(cls, value: int):
         return value / 100
 
     def get_time_for_timezone(self, timezone: str = 'Europe/Kyiv'):
+        """
+        The get_time_for_timezone function returns the current time in a given timezone.
+
+        :param self: Represent the instance of the class
+        :param timezone: str: Set the default timezone
+        :return: The current time in the specified time zone
+        """
         return self.time.astimezone(pytz.timezone(timezone))

@@ -7,7 +7,6 @@ import aiohttp
 
 from .utils import exceptions
 
-
 # Main aiomonobank logger
 log = logging.getLogger('aiomonobank')
 
@@ -19,20 +18,33 @@ class MonobankAPIServer:
     """
     base: str
 
-    def api_url(self, method: str) -> str:
+    def api_url(self, api_path: str) -> str:
         """
-        Generate URL for API methods
+        The api_url function takes a string as an argument and returns a string.
+        The returned string is the base url for the api with the api_path appended to it.
 
-        :param method: API method name (case insensitive)
-        :return: URL
+        :param self: Represent the instance of the class
+        :param api_path: str: Specify the path of the api
+        :return: The base url with the api_path appended to it
         """
-        return self.base.format(method=method)
+        return self.base.format(api_path=api_path)
 
     @classmethod
     def from_base(cls, base: str) -> 'MonobankAPIServer':
+        """
+        The from_base function is a class method that allows you to create an instance of the MonobankAPIServer
+        class by providing only the base URL for the API server. This is useful if you want to use a different
+        Monobank API server than what's provided in this library, or if you're using your own local development
+        server. The from_base function will automatically add /{{api_path}} to whatever base URL string it receives,
+        so that all requests are properly routed.
+
+        :param cls: Refer to the class itself
+        :param base: str: Specify the base url of the api
+        :return: A monobank api server object with the base attribute set to the value of
+        """
         base = base.rstrip("/")
         return cls(
-            base=f"{base}/{{method}}",
+            base=f"{base}/{{api_path}}",
         )
 
 
@@ -41,39 +53,34 @@ MONOBANK_PRODUCTION = MonobankAPIServer.from_base("https://api.monobank.ua")
 
 def check_token(token: str) -> bool:
     """
-    Validate token
+    The check_token function checks if the token is valid.
 
-    :param token:
-    :return:
+    :param token: str: Specify the type of the parameter
+    :return: True if the token is valid and raises an exception otherwise
     """
     if not isinstance(token, str):
-        message = (f"Token is invalid! "
-                   f"It must be 'str' type instead of {type(token)} type.")
-        raise exceptions.ValidationError(message)
+        raise exceptions.ValidationError(f"Token is invalid! It must be 'str' type instead of {type(token)} type.")
 
     if any(x.isspace() for x in token):
-        message = "Token is invalid! It can't contains spaces."
-        raise exceptions.ValidationError(message)
+        raise exceptions.ValidationError("Token is invalid! It can't contains spaces.")
 
     return True
 
 
-def check_result(method_name: str, content_type: str, status_code: int, body: str):
+def check_result(api_path: str, content_type: str, status_code: int, body: str) -> dict:
     """
-    Checks whether `result` is a valid API response.
-    A result is considered invalid if:
-    - The server returned an HTTP response code other than 200
-    - The content of the result is invalid JSON.
-    - The method call was unsuccessful (The JSON 'ok' field equals False)
+    The check_result function is used to check the response from Monobank API.
+    It checks if the content type of the response is application/json, and if it's not - raises a NetworkError exception.
+    If it's OK, then we try to parse JSON from body of our request and store it in result_json variable.
+    Then we check status code: if everything is OK (200), then return result_json; otherwise raise an appropriate exception.
 
-    :param method_name: The name of the method called
-    :param status_code: status code
-    :param content_type: content type of result
-    :param body: result body
-    :return: The result parsed to a JSON dictionary
-    :raises ApiException: if one of the above listed cases is applicable
+    :param api_path: str: Specify the path to the api method
+    :param content_type: str: Check the content type of the response
+    :param status_code: int: Check the status code of the response
+    :param body: str: Pass the body of the response from monobank api
+    :return: The dictionary with the following keys if the status code is 200
     """
-    log.debug('Response for %s: [%d] "%r"', method_name, status_code, body)
+    log.debug('Response for %s: [%d] "%r"', api_path, status_code, body)
 
     if content_type != 'application/json':
         raise exceptions.NetworkError(f"Invalid response with content type {content_type}: \"{body}\"")
@@ -100,13 +107,35 @@ def check_result(method_name: str, content_type: str, status_code: int, body: st
     raise exceptions.MonobankError(f"{error_description} [{status_code}]")
 
 
-async def make_request(session, server, request_type, method, **kwargs):
-    log.debug('Make request: "%s" with data: "%r"', method, kwargs['json'])
+async def make_request(
+        session: aiohttp.ClientSession,
+        server: MonobankAPIServer,
+        http_method: HTTPStatus,
+        api_path: str,
+        **kwargs
+) -> dict:
+    """
+    The make_request function is a helper function that makes an HTTP request to the server.
+    It takes in the following parameters:
+        session - The aiohttp ClientSession object used for making requests.
+        server - The Server object containing information about the API endpoint and authentication credentials.
+        http_method - A string representing which HTTP method to use (e.g., 'GET', 'POST', etc.)  This should be one of
+        those defined in constants/HTTP_METHODS, but it can also be any other valid HTTP method if you want to extend
+        this library's functionality beyond what is provided by Monobank.
 
-    url = server.api_url(method=method)
+    :param session: aiohttp.ClientSession: Make the request
+    :param server: MonobankAPIServer: Get the url of the api endpoint
+    :param http_method: HTTPStatus: Specify the http method to use
+    :param api_path: str: Log the request and response
+    :param **kwargs: Pass a variable number of keyword arguments to the function
+    :return: A dictionary
+    """
+    log.debug('Make request: "%s" with data: "%r"', api_path, kwargs['json'])
+
+    url = server.api_url(api_path=api_path)
 
     try:
-        async with session.request(request_type, url, **kwargs) as response:
-            return check_result(method, response.content_type, response.status, await response.text())
+        async with session.request(http_method, url, **kwargs) as response:
+            return check_result(api_path, response.content_type, response.status, await response.text())
     except aiohttp.ClientError as e:
         raise exceptions.NetworkError(f"aiohttp client throws an error: {e.__class__.__name__}: {e}")

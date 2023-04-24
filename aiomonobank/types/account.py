@@ -13,5 +13,5 @@ class Account(BaseModel):
     iban: str
 
     @validator('balance', 'credit_limit', pre=True, allow_reuse=True)
-    def convert_from_integer_to_currency_sum(cls, value: int):
+    def _convert_from_integer_to_currency_sum(cls, value: int):
         return value / 100
