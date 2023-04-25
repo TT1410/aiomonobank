@@ -1,7 +1,8 @@
 import logging
 from dataclasses import dataclass
-from http import HTTPStatus
+from http import HTTPStatus, HTTPMethod  # noqa
 import json
+from urllib.parse import urljoin
 
 import aiohttp
 
@@ -16,7 +17,7 @@ class MonobankAPIServer:
     """
     Base config for API Endpoints
     """
-    base: str
+    base_url: str
 
     def api_url(self, api_path: str) -> str:
         """
@@ -27,7 +28,7 @@ class MonobankAPIServer:
         :param api_path: str: Specify the path of the api
         :return: The base url with the api_path appended to it
         """
-        return self.base.format(api_path=api_path)
+        return urljoin(self.base_url, api_path)
 
     @classmethod
     def from_base(cls, base: str) -> 'MonobankAPIServer':
@@ -42,9 +43,8 @@ class MonobankAPIServer:
         :param base: str: Specify the base url of the api
         :return: A monobank api server object with the base attribute set to the value of
         """
-        base = base.rstrip("/")
         return cls(
-            base=f"{base}/{{api_path}}",
+            base_url=base.rstrip("/"),
         )
 
 
@@ -110,7 +110,7 @@ def check_result(api_path: str, content_type: str, status_code: int, body: str) 
 async def make_request(
         session: aiohttp.ClientSession,
         server: MonobankAPIServer,
-        http_method: HTTPStatus,
+        http_method: HTTPMethod,
         api_path: str,
         **kwargs
 ) -> dict:
@@ -130,7 +130,7 @@ async def make_request(
     :param **kwargs: Pass a variable number of keyword arguments to the function
     :return: A dictionary
     """
-    log.debug('Make request: "%s" with data: "%r"', api_path, kwargs['json'])
+    log.debug('Make request: "%s" with data: "%r"', api_path, kwargs.get('json', {}))
 
     url = server.api_url(api_path=api_path)
 

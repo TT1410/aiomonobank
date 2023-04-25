@@ -37,7 +37,7 @@ class BaseMonobank:
         ssl_context = ssl.create_default_context(cafile=certifi.where())
 
         self._session: Optional[aiohttp.ClientSession] = None
-        self._connector_class: aiohttp.TCPConnector = aiohttp.TCPConnector
+        self._connector_class: aiohttp.TCPConnector = aiohttp.TCPConnector  # noqa
         self._connector_init = dict(limit=connections_limit, ssl=ssl_context)
 
     async def get_new_session(self) -> aiohttp.ClientSession:
@@ -102,6 +102,14 @@ class BaseMonobank:
             session=await self.get_session(),
             server=self.server,
             http_method=http_method,
-            path=path,
+            api_path=path,
             **kwargs
         )
+
+    async def __aenter__(self):
+        await self.get_session()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+

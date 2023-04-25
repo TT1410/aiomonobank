@@ -1,9 +1,10 @@
-from . import api
-from .base import BaseMonobank
-from .monobank import Monobank
+from .monobank import MonoPublic, MonoPersonal
 
 __all__ = (
-    'BaseMonobank',
-    'Monobank',
-    'api',
+    '__version__',
+    'MonoPublic',
+    'MonoPersonal',
 )
+
+
+__version__ = "1.0.0"

@@ -1,64 +1,117 @@
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urljoin
+from typing import Optional
 from http import HTTPMethod  # noqa
 
+from aiocache import cached, Cache
+from aiocache.serializers import PickleSerializer
+
+from .api import MonobankAPIServer, MONOBANK_PRODUCTION
 from .base import BaseMonobank
-from .types import Statement, Client
+from .types import Statement, Client, Currency
 
 
-class Monobank(BaseMonobank):
-    base_path = "personal"
+class MonoPublic(BaseMonobank):
+    """
+    Загальна інформація що надається без авторизації.
 
-    def _api_path(self, path: str) -> str:
+    Джерело: https://api.monobank.ua/docs/#tag/Publichni-dani
+    """
+    def __init__(self, connections_limit: Optional[int] = None,
+                 server: MonobankAPIServer = MONOBANK_PRODUCTION, **kwargs) -> None:
+        super().__init__(
+            token=kwargs.get('token', ''),
+            validate_token=kwargs.get('validate_token', False),
+            connections_limit=connections_limit,
+            server=server
+        )
+
+    @cached(ttl=300, cache=Cache.MEMORY, serializer=PickleSerializer())
+    async def get_currency(self) -> list[Currency]:
         """
-        The api_path function is a helper function that takes in a path and returns the full url to the API endpoint.
+        Отримання курсів валют:
+            Отримати базовий перелік курсів валют monobank.
+            Інформація кешується та оновлюється не частіше 1 разу на 5 хвилин.
 
-        :param self: Represent the instance of the class
-        :param path: str: Join the base_path and path together
-        :return: The base path + the path
+        Джерело: https://api.monobank.ua/docs/#tag/Publichni-dani/paths/~1bank~1currency/get
+
+        :return: A list of currency objects
         """
-        return urljoin(self.base_path, path)
+        currency = await self.request(
+            HTTPMethod.GET,
+            "/bank/currency"
+        )
 
-    async def set_webhook(self, webhook_url: str = '') -> bool:
+        return [Currency(**cur) for cur in currency]
+
+
+class MonoPersonal(MonoPublic):
+    """
+    Інформація, що надається тільки за наявністю token-а доступу, який клієнт може отримати
+    в особистому кабінеті https://api.monobank.ua/
+
+    Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani
+    """
+    def __init__(
+            self,
+            token: str,
+            validate_token: Optional[bool] = True,
+            connections_limit: Optional[int] = None,
+            server: MonobankAPIServer = MONOBANK_PRODUCTION
+    ) -> None:
         """
-        Установка WebHook URL пользователя:
-            Для подтверждения корректности предоставляемого адреса на него посылается GET-запрос.
-            Сервер должен ответить строго HTTP статус-кодом 200, и никаким другим.
-            Если валидация пройдена, на заданный адрес начинают посылаться POST запросы с событиями.
+        Create Monobank API token from https://api.monobank.ua/
 
-        События отправляются в следующем виде:
-            POST запрос на заданный адрес в формате {type:"StatementItem", data:{account:"...", statementItem:{#StatementItem}}}.
-            Если пользовательский сервис не ответит в течение 5с на команду, сервис повторит попытку еще через 60 и 600 секунд.
-            Если на третью попытку ответ не будет получен, функция будет отключена.
-            Ответ сервера должен строго содержать код HTTP 200.
+        :param token: str: token from https://api.monobank.ua/
+        :param server: MonobankAPIServer: Monobank API Server endpoint.
+        :raise aiomonobank.utils.exceptions.ValidationError: when the token is invalid
+        """
+        super().__init__(
+            token=token,
+            validate_token=validate_token,
+            connections_limit=connections_limit,
+            server=server
+        )
+
+    async def set_webhook(self, webhook_url: str) -> bool:
+        """
+        Встановлення URL користувача:
+            Для підтвердження коректності наданої адреси, на неї надсилається GET-запит.
+            Сервер має відповісти строго HTTP статус-кодом 200, і ніяким іншим.
+            Якщо валідацію пройдено, на задану адресу починають надсилатися POST запити з подіями.
+
+        Події надсилаються у наступному вигляді:
+            POST запит на задану адресу у форматі {type:"StatementItem", data:{account:"...", statementItem:{#StatementItem}}}.
+            Якщо сервіс користувача не відповість протягом 5с на команду, сервіс повторить спробу ще через 60 та 600 секунд.
+            Якщо на третю спробу відповідь отримана не буде, функція буде вимкнута.
+            Відповідь сервера має строго містити HTTP статус-код 200.
 
         :param webhook_url: str:
-        :raise aiomonobank.utils.exceptions.RetryAfter: когда запросы чаще 1 раза в минуту
+        :raise aiomonobank.utils.exceptions.RetryAfter: якщо запити частіше 1 разу в хвилину
 
-        Источник: :obj:`https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1webhook/post`
+        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1webhook/post
         """
         await self.request(
             HTTPMethod.POST,
-            self._api_path("webhook"),
+            "/personal/webhook",
             json={"webHookUrl": webhook_url}
         )
 
         return True
 
-    async def client_info(self) -> Client:
+    async def get_client_info(self) -> Client:
         """
-        Информация о клиенте:
-            Получение информации о клиенте и перечне его счетов и банок.
+        Інформація про клієнта:
+            Отримання інформації про клієнта та переліку його рахунків і банок.
 
-        Ограничение на использование функции не чаще 1 раза в 60 секунд.
+        Обмеження на використання функції не частіше ніж 1 раз у 60 секунд.
 
-        Источник: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1client-info/get
+        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1client-info/get
 
-        :raise aiomonobank.utils.exceptions.RetryAfter: когда запросы чаще 1 раза в минуту
+        :raise aiomonobank.utils.exceptions.RetryAfter: якщо запити частіше 1 разу в хвилину
         """
         client = await self.request(
             HTTPMethod.GET,
-            self._api_path("client-info")
+            "/personal/client-info"
         )
 
         return Client(**client)
@@ -68,20 +121,20 @@ class Monobank(BaseMonobank):
                             from_datetime: datetime = None,
                             to_datetime: datetime = None) -> list[Statement]:
         """
-        Выписка:
-            Получение выписки за время от {from} до {to} времени в формате UTC time.
-            Максимальное время, за которое можно получать выписку 31 сутки + 1 час.
+        Виписка:
+            Отримання виписки за час від {from_datetime} до {to_datetime} часу в секундах у форматі UTC time.
+            Максимальний час, за який можливо отримати виписку — 31 доба + 1 година
 
-        Ограничения на использование функции не чаще 1 раза в 60 секунд.
+        Обмеження на використання функції — не частіше ніж 1 раз на 60 секунд.
 
-        Источник: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1statement~1{account}~1{from}~1{to}/get
+        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1statement~1{account}~1{from}~1{to}/get
 
-        :param account_id: str: Идентификатор счета или банки из перечней Statement list или 0 – дефолтный счет.
-        :param from_datetime: datetime: Начало времени выписки.
-        :param to_datetime: datetime: Последнее время выписки (если нет, будет использоваться текущее время).
-        :raise aiomonobank.utils.exceptions.InvalidAccount: когда неверный account_id
-        :raise aiomonobank.utils.exceptions.PeriodError: когда период больше 31 дня и 1 часа
-        :raise aiomonobank.utils.exceptions.RetryAfter: когда запросы чаще 1 раза в минуту
+        :param account_id: str: Ідентифікатор рахунку або банки з переліків Statement list або 0 - дефолтний рахунок.
+        :param from_datetime: datetime: Початок часу виписки.
+        :param to_datetime: datetime: Останній час виписки (якщо відсутній, буде використовуватись поточний час).
+        :raise aiomonobank.utils.exceptions.InvalidAccount: якщо некоректний account_id
+        :raise aiomonobank.utils.exceptions.PeriodError: якщо період більше 31 дня та 1 години
+        :raise aiomonobank.utils.exceptions.RetryAfter: якщо запити частіше 1 разу в хвилину
         """
         from_datetime = await timestamp(
             from_datetime or datetime.utcnow() - timedelta(days=31, hours=1)
@@ -94,7 +147,7 @@ class Monobank(BaseMonobank):
 
         statements = await self.request(
             HTTPMethod.GET,
-            self._api_path("statement" + path_params)
+            "/personal/statement" + path_params
         )
 
         return [Statement(**statement) for statement in statements]
