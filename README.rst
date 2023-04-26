@@ -35,7 +35,8 @@ Setup
 Examples
 ========
 
-    We currently have 2 different classes for using the Monobank API.
+We currently have 2 different classes for using the Monobank API:
+-----------------------------------------------------------------
 
 - ``MonoPublic`` is simple base class for others, can only get currencies
 - ``MonoPersonal`` - this class for talk to personal Monobank API
