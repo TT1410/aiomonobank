@@ -36,12 +36,13 @@ Examples
 ========
 
     We currently have 2 different classes for using the Monobank API.
+
 - ``MonoPublic`` is simple base class for others, can only get currencies
 - ``MonoPersonal`` - this class for talk to personal Monobank API
 
 
 `get_currency <https://api.monobank.ua/docs/#tag/Publichni-dani/paths/~1bank~1currency/get>`_ request
------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 
 .. code-block:: python
 
@@ -63,7 +64,7 @@ Examples
 
 
 `get_client_info <https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1client-info/get>`_ request
---------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
 
 .. code-block:: python
 
@@ -90,7 +91,7 @@ Examples
 
 
 `get_statement <https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1statement~1{account}~1{from}~1{to}/get>`_ request
------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------
 
 .. code-block:: python
 
