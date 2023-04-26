@@ -1,4 +1,3 @@
-import json
 import logging
 from http import HTTPStatus
 
@@ -8,7 +7,7 @@ from aiomonobank import MonoPersonal, types
 WEBHOOK_HOST = "https://example.com"
 WEBAPP_HOST = "localhost"
 WEBAPP_PORT = 8822
-MONOBANK_API_TOKEN = 'your_token'
+MONOBANK_API_TOKEN = 'your_token'  # TODO don't forget to replace with your real token
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ async def new_transaction(request: web.Request, token: str) -> web.Response:
         logger.debug(f"The account ID of the new transaction: {webhook_data.data.account_id}. "
                      f"Sum: {webhook_data.data.statement.amount} UAH")
 
-        print(json.dumps(webhook_data, ensure_ascii=False, indent=4))
+        print(webhook_data)
 
     return web.json_response(status=HTTPStatus.OK)
 
