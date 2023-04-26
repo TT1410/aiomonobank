@@ -7,7 +7,7 @@ from aiomonobank import MonoPersonal, types
 WEBHOOK_HOST = "https://example.com"
 WEBAPP_HOST = "localhost"
 WEBAPP_PORT = 8822
-MONOBANK_API_TOKEN = 'your_token'  # TODO don't forget to replace with your real token
+MONOBANK_API_TOKEN = 'your_api_token_here'  # TODO don't forget to replace with your real token
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,15 @@ router = web.RouteTableDef()
 
 
 @router.get("/{token}")
-async def check_webhook_url(request: web.Request, token: str) -> web.Response:
+async def check_webhook_url(request: web.Request) -> web.Response:
     """
     The check_webhook_url function is used to check the webhook URL.
 
     :param request: web.Request: Get the request object
-    :param token: str: Check the token from the webhook url
     :return: A response with the status code 200
     """
+    token = request.match_info.get('token')
+
     if token == MONOBANK_API_TOKEN:
         logger.debug(f"Successful check webhook URL path: {request.path}")
 
@@ -34,14 +35,13 @@ async def check_webhook_url(request: web.Request, token: str) -> web.Response:
 
 
 @router.post("/{token}")
-async def new_transaction(request: web.Request, token: str) -> web.Response:
+async def new_transaction(request: web.Request) -> web.Response:
     """
     The new_transaction function is a webhook handler for the new transaction event.
     It receives a request from the Monobank API and returns an HTTP response with status code 200.
     The function also logs information about the new transaction.
 
     :param request: web.Request: Receive the request data
-    :param token: str: Check the authenticity of the request
     :return: The status code 200
     """
     webhook_data = types.WebhookData(
@@ -76,6 +76,8 @@ def main() -> None:
     """
     try:
         app = web.Application()
+
+        app.add_routes(routes=router)
 
         app.on_startup.append(on_startup)
         app.on_shutdown.append(on_shutdown)

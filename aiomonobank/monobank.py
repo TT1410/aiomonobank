@@ -32,7 +32,7 @@ class MonoPublic(BaseMonobank):
             Отримати базовий перелік курсів валют monobank.
             Інформація кешується та оновлюється не частіше 1 разу на 5 хвилин.
 
-        Джерело: https://api.monobank.ua/docs/#tag/Publichni-dani/paths/~1bank~1currency/get
+        `Джерело <https://api.monobank.ua/docs/#tag/Publichni-dani/paths/~1bank~1currency/get>`_
 
         :return: A list of currency objects
         """
@@ -88,7 +88,7 @@ class MonoPersonal(MonoPublic):
         :param webhook_url: str:
         :raise aiomonobank.utils.exceptions.RetryAfter: якщо запити частіше 1 разу в хвилину
 
-        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1webhook/post
+        `Джерело <https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1webhook/post>`_
         """
         await self.request(
             HTTPMethod.POST,
@@ -105,7 +105,7 @@ class MonoPersonal(MonoPublic):
 
         Обмеження на використання функції не частіше ніж 1 раз у 60 секунд.
 
-        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1client-info/get
+        `Джерело <https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1client-info/get>`_
 
         :raise aiomonobank.utils.exceptions.RetryAfter: якщо запити частіше 1 разу в хвилину
         """
@@ -127,7 +127,7 @@ class MonoPersonal(MonoPublic):
 
         Обмеження на використання функції — не частіше ніж 1 раз на 60 секунд.
 
-        Джерело: https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1statement~1{account}~1{from}~1{to}/get
+        `Джерело <https://api.monobank.ua/docs/#tag/Kliyentski-personalni-dani/paths/~1personal~1statement~1{account}~1{from}~1{to}/get>`_
 
         :param account_id: str: Ідентифікатор рахунку або банки з переліків Statement list або 0 - дефолтний рахунок.
         :param from_datetime: datetime: Початок часу виписки.

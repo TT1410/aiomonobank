@@ -73,7 +73,7 @@ We currently have 2 different classes for using the Monobank API:
 
     from aiomonobank import MonoPersonal
 
-    MONOBANK_API_TOKEN = 'your_token'
+    MONOBANK_API_TOKEN = 'your_api_token_here'
 
 
     async def main():
@@ -101,7 +101,7 @@ We currently have 2 different classes for using the Monobank API:
 
     from aiomonobank import MonoPersonal
 
-    MONOBANK_API_TOKEN = 'your_token'
+    MONOBANK_API_TOKEN = 'your_api_token_here'
 
 
     async def main():
